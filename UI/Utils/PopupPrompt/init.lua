@@ -41,7 +41,7 @@ function PopupPrompt:Hide()
 	end)
 end
 
-function PopupPrompt:ShowAsync(widget,text:string,acceptCallback,declineCallback,acceptText,declineText)
+function PopupPrompt:ShowAsync(widget, text:string, acceptCallback, declineCallback, acceptText, declineText, opt_default)
 	if self.Occupied then return end
 	self.Occupied = true
 	
@@ -49,23 +49,38 @@ function PopupPrompt:ShowAsync(widget,text:string,acceptCallback,declineCallback
 	self.UI.Window.Confirm.Text.Text = acceptText or "Yes"
 	self.UI.Window.Decline.Text.Text = declineText or "No"
 	self.UI.Parent = widget
+
+	local resolved = false
 	
 	local function resolve(callback)
+		resolved = true
 		callback()
 		self:Hide()
 	end
-	
-	self.Cons[1] = self.UI.Window.Confirm.MouseButton1Click:Connect(function()
+
+	local function accept()
 		resolve(acceptCallback)
-	end)
-	
-	self.Cons[2] = self.UI.Window.Decline.MouseButton1Click:Connect(function()
+	end
+
+	local function decline()
 		resolve(declineCallback)
-	end)
+	end
+	
+	self.Cons[1] = self.UI.Window.Confirm.MouseButton1Click:Connect(accept)
+	
+	self.Cons[2] = self.UI.Window.Decline.MouseButton1Click:Connect(decline)
 	
 	self:Tween(true)
 	
 	repeat wait() until not self.Occupied or self.UI.Parent == script
+
+	if resolved == false and opt_default ~= nil then
+		if opt_default == true then
+			accept()
+		elseif opt_default == false then
+			decline()
+		end
+	end
 end
 
 function Init()

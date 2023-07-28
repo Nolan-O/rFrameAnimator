@@ -19,6 +19,8 @@ local UIUtils = shared.require("UIUtils")
 local Configuration = shared.require("Configuration")
 local TimeDragger = shared.require("TimeDragger")
 
+local NewTemplate = shared.NewTemplate
+
 local TIME_STAMP_INTERVAL = 150
 
 local Dragger = nil
@@ -31,7 +33,7 @@ function CreateTimeStamps(KeyFrameEditor,timeStampAmount)
 	for i = 1,timeStampAmount+1 do
 		local dez = UIUtils.SnapUI((1/timeStampAmount)*(i-1))
 		local stampTime = math.round(Globals.maxTimePosition.Value*dez)
-		local stampFrame = stampFrameTemplate:Clone()
+		local stampFrame = NewTemplate("TimeStampTemplate")
 
 		stampFrame.Text = stampTime
 		stampFrame.Position = UDim2.new(dez,0,.55,0)
