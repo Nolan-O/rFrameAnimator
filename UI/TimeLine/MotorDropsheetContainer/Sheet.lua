@@ -28,9 +28,15 @@ function Sheet:SetHighlighted(bool)
 		return
 	end
 	ScaledFrame.BackgroundColor3 = bool and SHEET_HIGHLIGHT_COLOR or MOTOR_SHEET_COLOR
+
+	if bool then
+		Network:Execute("AddSequenceToGraph", self.Instance)
+	else
+		Network:Execute("RemoveSequenceToGraph", self.Instance)
+	end
 end
 
-function Sheet.new(Widget,inst,Parent,layers)
+function Sheet.new(Widget, inst, Parent, layers)
 	local Grid = Parent:FindFirstChildOfClass("UIGridLayout")
 	local Part1 = inst:IsA("Motor6D") and inst.Part1
 	local Frame = MotorFrameTemplate:Clone()
@@ -45,8 +51,8 @@ function Sheet.new(Widget,inst,Parent,layers)
 	self.ScaledFrame = ScaledFrame
 	self.Cons = {}
 
-	ScaledFrame.Size = UDim2.new(math.clamp(goalSizeX,.25,1),0,1,0)
-	ScaledFrame.Position = UDim2.new(math.clamp(1-goalSizeX/2,0,.8),0,.5,0)
+	ScaledFrame.Size = UDim2.new(math.clamp(goalSizeX, .25, 1), 0, 1, 0)
+	ScaledFrame.Position = UDim2.new(math.clamp(1-goalSizeX/2, 0, .8), 0, .5, 0)
 	ScaledFrame.MotorName.Text = inst.Name
 	Frame.Name = inst.Name or ""
 	Frame.Parent = Parent
@@ -71,10 +77,6 @@ function Sheet.new(Widget,inst,Parent,layers)
 			end
 			
 			Network:Execute("AddBlankKeyFrames",0,motors)
-		end
-		
-		callbacks["Edit Graph"] = function()
-			Network:Execute("SequenceToGraph",inst)
 		end
 		
 		local chosenAction = MenuContainer:Show("Sheet Menu")

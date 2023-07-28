@@ -245,7 +245,8 @@ end
 
 function ActivatePlugin()
 	if enabled then return end
-	local succ = SelectRig() if not succ then return end
+	local succ = SelectRig()
+	if not succ then return end
 	
 	enabled = true
 	EasingStyleWidget.Enabled = true
@@ -642,6 +643,7 @@ Network:Register("IncrementCFChange",function(Part,ChangeCF,changeType)
 	
 	if not foundSequence then return end
 	
+	-- Add keyframe if it doesn't exist yet
 	if not foundSequence:GetKeyFrameAtPos(curTimePos) then
 		curAnimation:AddKeyFrame(curTimePos,foundMotor)
 		KeyFrameContainer:Update(curAnimation)
@@ -747,12 +749,23 @@ Network:Register("LoadWaypoint",function(SavePoint)
 	GraphHandler:UpdateAll()
 end)
 
-Network:Register("SequenceToGraph",function(Motor)
+Network:Register("AddSequenceToGraph",function(Motor)
 	if not curAnimation then return end
-	local Sequence = curAnimation.KeyFrameSequences[Motor.Name] if not Sequence then return end
-	local origin = originData.GetOriginForMotor(Motor) if not origin then return end
+	local Sequence = curAnimation.KeyFrameSequences[Motor.Name]
+	if not Sequence then return end
+	local origin = originData.GetOriginForMotor(Motor)
+	if not origin then return end
 
-	GraphHandler:CreateGraph(Sequence)
+	GraphHandler:AddSequence(Sequence)
+end)
+Network:Register("RemoveSequenceToGraph",function(Motor)
+	if not curAnimation then return end
+	local Sequence = curAnimation.KeyFrameSequences[Motor.Name]
+	if not Sequence then return end
+	local origin = originData.GetOriginForMotor(Motor)
+	if not origin then return end
+
+	GraphHandler:RemoveSequence(Sequence)
 end)
 
 Network:Register("SetAxisCFrame",function(Id,newOffset,changeType,Axis)

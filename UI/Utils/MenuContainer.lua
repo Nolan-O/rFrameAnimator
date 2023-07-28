@@ -67,8 +67,6 @@ function MenuContainer:CreateSheetMenu()
 	SheetMenu.Name = "Sheet Menu"
 	SheetMenu:AddAction(self.Actions["Add Blank KeyFrame"])
 	SheetMenu:AddAction(self.Actions["Add Blank KeyFrame to all"])
-	SheetMenu:AddSeparator()
-	SheetMenu:AddAction(self.Actions["Edit Graph"])
 	
 	table.insert(self.Menus,SheetMenu)
 end

@@ -19,6 +19,9 @@ local Background = EasingStyleWidget.GraphEditor.Background
 local Content = Background.Content
 local ContentInputCatcher = Background.ContentInputCatcher
 
+local Sequences = { }
+local SequenceGraphs = { }
+
 function GraphHandler:GetMetaData()
 	return {
 		Axis = self.Axis,
@@ -31,9 +34,9 @@ end
 
 function GraphHandler:Clear()
 	self:DeselectAll()
-	for i,graphObj in pairs(self.Graphs) do
+	for i,graphObj in pairs(SequenceGraphs) do
 		graphObj:Destroy()
-		self.Graphs[i] = nil
+		SequenceGraphs[i] = nil
 	end
 end
 
@@ -60,7 +63,7 @@ function GraphHandler:MassSelect()
 	
 	selector.Updated:Connect(function()
 		self:DeselectAll()
-		for _,graphObj in pairs(self.Graphs) do
+		for _,graphObj in pairs(SequenceGraphs) do
 			for _,nodeObj in pairs(graphObj:GetNodes()) do
 				if selector:IsOverlapping(nodeObj.Node) then
 					nodeObj:SetSelected(true)
@@ -88,103 +91,110 @@ end
 
 function GraphHandler:AddNodeAtMousep()
 	local total = 0
-	for i,v in pairs(self.Graphs) do total += 1 end
+	for i,v in pairs(SequenceGraphs) do total += 1 end
 	
 	if total ~= 1 then return end
-	local _,graphObj = next(self.Graphs)
+	local _,graphObj = next(SequenceGraphs)
 	
 	graphObj:AddNodeAtMousep()
 end
 
 function GraphHandler:UpdateAll()
-	for _,graphObj in pairs(self.Graphs) do
+	for _,graphObj in pairs(SequenceGraphs) do
 		graphObj:Update()
 	end
 	self:DeselectAll()
 end
 
-function GraphHandler:CreateGraph(Sequence)
-	local key = Sequence.Motor
-	local exKey, exGraph = next(self.Graphs)
-	
-	if exKey then -- 1 graph only for the time being
-		exGraph:Destroy()
-		self.Graphs[exKey] = nil
-	end
-	
-	local graphObj = Graph.new(Sequence,self:GetMetaData())
-	
-	graphObj.NodeClicked:Connect(function(node)
-		local i = table.find(self.SelectedNodes,node)
-		if InputService:IsKeyDown(Enum.KeyCode.LeftControl) then
-			if not i then
-				table.insert(self.SelectedNodes,node)
-			else
-				table.remove(self.SelectedNodes,i)
-			end
-		else
-			if not i then
-				self:DeselectAll()
-				table.insert(self.SelectedNodes,node)
-			end
-		end
-		node:SetSelected(table.find(self.SelectedNodes,node) ~= nil)
-	end)
-	
-	graphObj.NodeMoved:Connect(function(node,moveDelta)
-		if table.find(self.SelectedNodes,node) == nil then return end
-		for _,selectedNode in pairs(self.SelectedNodes) do
-			if selectedNode == node then continue end
-			selectedNode:SetPosition(selectedNode:GetPosition()+moveDelta)
-		end
-	end)
-	
-	graphObj.NodePositionChanged:Connect(function()
-		Network:Execute("SetWaypoint")
-		for _,selectedNode in pairs(self.SelectedNodes) do
-			local Pos = selectedNode:GetPosition()
-			local Id = selectedNode.Id
-			
-			local newValues = GraphUtils.positionToValues(Pos,self.Parent)
-			local newTimePos = math.round(newValues.X)
+function GraphHandler:AddSequence(sequence)
+	self:RemoveSequence(sequence)
+	local key = sequence.Motor
+	Sequences[key] = sequence
 
-			local newOffset = newValues.Y
-			local DisplayType = self.DisplayType
-			local Axis = self.Axis
-
-			Network:Execute("SetAxisCFrame",Id,newOffset,DisplayType,Axis)
-			Network:Execute("ChangeKeyFrameTimePos",Id,newTimePos)
-		end
-		Network:Execute("SetWaypoint")
-	end)
-	
-	graphObj.DeleteSelected:Connect(function(node)
-		self:DeleteSelected()
-	end)
-	
-	graphObj.ResetSelected:Connect(function(node)
-		self:ResetSelected()
-	end)
-	
-	self.Graphs[key] = graphObj
-	EasingStyleWidget.Enabled = true
+	self:CreateGraph()
 end
 
-function GraphHandler:RemoveGraph(Sequence)
+function GraphHandler:RemoveSequence(Sequence)
 	local key = Sequence.Motor
-	local graphObj = self.Graphs[key]
+	local graphObj = SequenceGraphs[key]
+
 	if graphObj then
 		graphObj:Destroy()
-		self.Graphs[key] = nil
+		Sequences[key] = nil
+		
+		-- TODO: Make this deselect what is in this seq instead
+		self:DeselectAll()
+		self:CreateGraph()
 	end
-	self:DeselectAll()
+end
+
+function GraphHandler:CreateGraph()
+	for motor, Sequence in Sequences do
+		local graphObj = Graph.new(Sequence,self:GetMetaData())
+		
+		graphObj.NodeClicked:Connect(function(node)
+			local i = table.find(self.SelectedNodes,node)
+			if InputService:IsKeyDown(Enum.KeyCode.LeftControl) then
+				if not i then
+					table.insert(self.SelectedNodes,node)
+				else
+					table.remove(self.SelectedNodes,i)
+				end
+			else
+				if not i then
+					self:DeselectAll()
+					table.insert(self.SelectedNodes,node)
+				end
+			end
+			node:SetSelected(table.find(self.SelectedNodes,node) ~= nil)
+		end)
+		
+		graphObj.NodeMoved:Connect(function(node,moveDelta)
+			if table.find(self.SelectedNodes,node) == nil then return end
+			for _,selectedNode in pairs(self.SelectedNodes) do
+				if selectedNode == node then continue end
+				selectedNode:SetPosition(selectedNode:GetPosition()+moveDelta)
+			end
+		end)
+		
+		graphObj.NodePositionChanged:Connect(function()
+			Network:Execute("SetWaypoint")
+			for _,selectedNode in pairs(self.SelectedNodes) do
+				local Pos = selectedNode:GetPosition()
+				local Id = selectedNode.Id
+				
+				local newValues = GraphUtils.positionToValues(Pos,self.Parent)
+				local newTimePos = math.round(newValues.X)
+
+				local newOffset = newValues.Y
+				local DisplayType = self.DisplayType
+				local Axis = self.Axis
+
+				Network:Execute("SetAxisCFrame",Id,newOffset,DisplayType,Axis)
+				Network:Execute("ChangeKeyFrameTimePos",Id,newTimePos)
+			end
+			Network:Execute("SetWaypoint")
+		end)
+		
+		graphObj.DeleteSelected:Connect(function(node)
+			self:DeleteSelected()
+		end)
+		
+		graphObj.ResetSelected:Connect(function(node)
+			self:ResetSelected()
+		end)
+		
+		SequenceGraphs[motor] = graphObj
+	end
+
+	EasingStyleWidget.Enabled = true
 end
 
 function GraphHandler:SetAxis(newAxis)
 	if newAxis == self.Axis then return end
 	self.Axis = newAxis
 	
-	for _,graphObj in pairs(self.Graphs) do
+	for _,graphObj in pairs(SequenceGraphs) do
 		graphObj:SetMetaData(self:GetMetaData())
 	end
 	
@@ -201,7 +211,7 @@ end
 function Init()
 	local self = setmetatable({},GraphHandler)
 	
-	self.Graphs = {}
+	SequenceGraphs = {}
 	self.SelectedNodes = {}
 	self.EventHolder = EventHolder.new(self,{"AxisChanged","DisplayTypeChanged"})
 	
