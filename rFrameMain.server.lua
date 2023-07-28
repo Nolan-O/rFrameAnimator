@@ -12,22 +12,35 @@ local button = toolbar:CreateButton(
 	"http://www.roblox.com/asset/?id=7229051060"
 )
 
+
+function shared.NewTemplate(name: string, opt_parent: Instance)
+	local ins = Templates:WaitForChild(name):Clone()
+
+	if opt_parent then
+		ins.Parent = opt_parent
+	end
+
+	return ins
+end
+
+local NewTemplate = shared.NewTemplate
+
 local TimeLineWidget = plugin:CreateDockWidgetPluginGui("TimeLine", Configuration.TimeLineWigetInfo)
 TimeLineWidget.Title = "Time Line"
 TimeLineWidget.Enabled = false
-Templates:WaitForChild("TimeLine"):Clone().Parent = TimeLineWidget
-Templates:WaitForChild("inputCatcher"):Clone().Parent = TimeLineWidget
+NewTemplate("TimeLine", TimeLineWidget)
+NewTemplate("inputCatcher", TimeLineWidget)
 
 local EasingStyleWidget = plugin:CreateDockWidgetPluginGui("Graph Editor", Configuration.GraphEditorInfo)
 EasingStyleWidget.Title = "Graph Editor"
 EasingStyleWidget.Enabled = false
-Templates:WaitForChild("GraphEditor"):Clone().Parent = EasingStyleWidget
-Templates:WaitForChild("inputCatcher"):Clone().Parent = EasingStyleWidget
+NewTemplate("GraphEditor", EasingStyleWidget)
+NewTemplate("inputCatcher", EasingStyleWidget)
 
 local MenuWidget = plugin:CreateDockWidgetPluginGui("Menu", Configuration.MenuInfo)
 MenuWidget.Title = "Menu"
 MenuWidget.Enabled = false
-Templates:WaitForChild("Menu"):Clone().Parent = MenuWidget
+NewTemplate("Menu", MenuWidget)
 
 shared.Plugin = plugin
 shared.UITemplates = Templates
@@ -150,11 +163,14 @@ function PlayAnimation()
 end
 
 function AttemptAnimationPlay()
+	print(1)
 	if not curAnimation then return end
 	
 	if not currentlyPlaying then
+		print(2)
 		PlayAnimation()
 	else
+		print(3)
 		StopAnimation()
 	end
 end
@@ -200,26 +216,31 @@ end
 
 function DeactivatePlugin()
 	if not enabled then return end
+
+	local function finish_deactivation()
+		enabled = false
+		TimeLineWidget.Enabled = false
+		EasingStyleWidget.Enabled = false
+		MenuWidget.Enabled = false
+		
+		SavePointService:Disable()
+		DeselectRig()
+		plugin:Deactivate(true)
+	end
 	
 	if not TimeLineWidget.Enabled or not MenuWidget.Enabled or curAnimation:GetKeyFrameAmount() < 1 then
 		Saver:AutoSave(curSelectedRig,curAnimation)
 	else
 		local text = ("Save animation: %s?"):format(curAnimation.Name)
-		local accept = function()
-			Saver:SaveAnimation(curSelectedRig,curAnimation.Name,curAnimation)
+		local function accept()
+			Saver:SaveAnimation(curSelectedRig, curAnimation.Name, curAnimation)
+			finish_deactivation()
 		end
-		local decline = function() end
-		PopupPrompt:ShowAsync(MenuWidget,text,accept,decline)
+		local function decline()
+			finish_deactivation()
+		end
+		PopupPrompt:ShowAsync(MenuWidget, text, accept, decline, nil, nil, true)
 	end
-	
-	enabled = false
-	TimeLineWidget.Enabled = false
-	EasingStyleWidget.Enabled = false
-	MenuWidget.Enabled = false
-	
-	SavePointService:Disable()
-	DeselectRig()
-	plugin:Deactivate(true)
 end
 
 function ActivatePlugin()
@@ -268,7 +289,7 @@ MenuWidget:GetPropertyChangedSignal("Enabled"):Connect(function()
 	end
 end)
 
-InputService:BindToInput({"UserInputService"},Enum.KeyCode.Space,Enum.UserInputState.Begin,AttemptAnimationPlay)
+InputService:BindToInput({"UserInputService"},Enum.KeyCode.Space, Enum.UserInputState.Begin, AttemptAnimationPlay)
 plugin.Deactivation:Connect(DeactivatePlugin)
 
 ------------------Network Connections---------------------------------
@@ -338,7 +359,7 @@ Network:Register("CreateNewAnimation",function()
 			Saver:SaveAnimation(curSelectedRig,curAnimation.Name,curAnimation)
 		end
 		local decline = function() end
-		PopupPrompt:ShowAsync(MenuWidget,text,accept,decline)
+		PopupPrompt:ShowAsync(MenuWidget, text, accept, decline, nil, nil, true)
 	end
 	if not curAnimation then return end
 	
